@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Snapshow</string>
+    <string name="permission_camera_rationale">Snapshow требуется доступ к камере для съемки фотографий</string>
+    <string name="permission_storage_rationale">Snapshow требуется доступ к хранилищу для сохранения фотографий</string>
+    <string name="permission_microphone_rationale">Snapshow требуется доступ к микрофону для записи звука</string>
+    <string name="allow">Разрешить</string>
+    <string name="deny">Отклонить</string>
+    <string name="settings">Настройки</string>
+    <string name="cancel">Отмена</string>
+    <string name="ok">OK</string>
+    <string name="camera_access_required">Требуется доступ к камере</string>
+    <string name="storage_access_required">Требуется доступ к хранилищу</string>
+    <string name="microphone_access_required">Требуется доступ к микрофону</string>
+    <string name="allow_snapshow">Разрешить Snapshow</string>
+    <string name="take_pictures">делать фотографии</string>
+    <string name="record_video">записывать видео</string>
+    <string name="record_audio">записывать аудио</string>
+    <string name="while_using_app">Во время использования приложения</string>
+    <string name="only_this_time">Только в этот раз</string>
+    <string name="dont_allow">Не разрешать</string>
+    <!-- Диалог разрешения на микрофон -->
+    <string name="permission_dialog_title">Разрешить приложению %1$s запись аудио?</string>
+    <string name="permission_dialog_message">Доступ к микрофону необходим для записи аудио во время использования приложения.</string>
+</resources> 
