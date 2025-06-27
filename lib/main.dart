@@ -158,18 +158,6 @@ class _SplashScreenState extends State<SplashScreen> {
             .animate()
             .fadeIn(duration: 600.ms, delay: 300.ms)
             .slide(begin: const Offset(0, 0.2), curve: Curves.easeOut),
-            
-            const SizedBox(height: 8),
-            
-            Text(
-              'Быстрый сбор и показ фотографий',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.8),
-              ),
-            )
-            .animate()
-            .fadeIn(duration: 600.ms, delay: 500.ms),
           ],
         ),
       ),
