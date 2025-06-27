@@ -5,13 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'theme/app_colors.dart';
-import 'screens/splash_screen.dart';
 
 // Глобальная переменная для хранения доступных камер
 List<CameraDescription> cameras = [];
@@ -343,54 +340,74 @@ class _HomePageState extends State<HomePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Настройки',
+                  'settings',
                   style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  'Время показа изображения (сек):',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                  ),
-                ),
+
                 const SizedBox(height: 10),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('1', style: GoogleFonts.poppins(fontSize: 14)),
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 6,
-                          activeTrackColor: AppColors.primary,
-                          inactiveTrackColor: AppColors.accent.withOpacity(0.3),
-                          thumbColor: AppColors.primary,
-                          overlayColor: AppColors.primary.withOpacity(0.2),
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-                        ),
-                        child: Slider(
-                          value: tempDisplayDuration.toDouble(),
-                          min: 1,
-                          max: 10,
-                          divisions: 9,
-                          onChanged: (value) {
-                            // Обновляем временную переменную и состояние диалога
-                            setDialogState(() {
-                              tempDisplayDuration = value.round();
-                            });
-                          },
+                    IconButton(
+                      onPressed: tempDisplayDuration > 1 
+                          ? () {
+                              setDialogState(() {
+                                tempDisplayDuration = tempDisplayDuration - 1;
+                              });
+                            } 
+                          : null,
+                      icon: const Icon(FontAwesomeIcons.minus),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.accent.withOpacity(0.2),
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.all(12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
-                    Text('10', style: GoogleFonts.poppins(fontSize: 14)),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$tempDisplayDuration',
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: tempDisplayDuration < 10 
+                          ? () {
+                              setDialogState(() {
+                                tempDisplayDuration = tempDisplayDuration + 1;
+                              });
+                            } 
+                          : null,
+                      icon: const Icon(FontAwesomeIcons.plus),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.accent.withOpacity(0.2),
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.all(12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '$tempDisplayDuration сек',
+                  'сек',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -401,27 +418,41 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        'Отмена',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.textSecondary,
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.all(12),
+                        minimumSize: const Size(48, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
+                      child: const Icon(
+                        FontAwesomeIcons.arrowLeft,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: () {
-                        // Применяем изменения к основной переменной
                         setState(() {
                           _displayDuration = tempDisplayDuration;
                         });
                         Navigator.of(context).pop();
                       },
-                      child: Text(
-                        'Применить',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        padding: const EdgeInsets.all(12),
+                        minimumSize: const Size(48, 48),
+                      ),
+                      child: const Icon(
+                        FontAwesomeIcons.arrowRight,
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -495,14 +526,12 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     icon: const Icon(FontAwesomeIcons.sliders, size: 20),
                     onPressed: _showSettingsDialog,
-                    tooltip: 'Настройки',
+                    tooltip: 'settings',
                   ),
-                  Text(
-                    'Галерея',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const Icon(
+                    FontAwesomeIcons.shoppingCart,
+                    size: 22,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 40), // Для баланса с левой кнопкой
                 ],
@@ -535,23 +564,7 @@ class _HomePageState extends State<HomePage> {
             size: 70,
             color: AppColors.secondary,
           ),
-          const SizedBox(height: 24),
-          Text(
-            'Нет фотографий',
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Нажмите на кнопку "Фото" внизу',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
-          ),
+
         ],
       ),
     )
@@ -792,14 +805,14 @@ class _HomePageState extends State<HomePage> {
             children: [
               _buildBottomButton(
                 icon: FontAwesomeIcons.camera,
-                label: 'Фото',
+                label: '',
                 onPressed: _takePhoto,
                 color: AppColors.primary,
                 isEnabled: true,
               ),
               _buildBottomButton(
                 icon: FontAwesomeIcons.trash,
-                label: _isMultiSelectMode ? 'Удалить' : 'Удалить',
+                label: '',
                 onPressed: hasSelection ? _deleteSelectedImage : null,
                 color: AppColors.error,
                 isEnabled: hasSelection,
@@ -807,7 +820,7 @@ class _HomePageState extends State<HomePage> {
               ),
               _buildBottomButton(
                 icon: FontAwesomeIcons.play,
-                label: 'Показать',
+                label: '',
                 onPressed: _imagePaths.isNotEmpty ? _startPresentation : null,
                 color: AppColors.secondary,
                 isEnabled: _imagePaths.isNotEmpty,

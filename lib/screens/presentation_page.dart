@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 class PresentationPage extends StatefulWidget {
   final List<String> imagePaths;

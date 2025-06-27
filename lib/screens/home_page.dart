@@ -115,7 +115,7 @@ class _HomePageState extends State<HomePage> {
               backgroundColor: app_theme.AppColors.primary,
             ),
             child: Text(
-              'Настройки',
+              'settings',
               style: GoogleFonts.poppins(
                 color: Colors.white,
               ),
@@ -224,7 +224,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               title: Text(
-                'Настройки',
+                'settings',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 22,
@@ -409,7 +409,7 @@ class _HomePageState extends State<HomePage> {
                   IconButton(
                     icon: const Icon(FontAwesomeIcons.sliders, size: 20),
                     onPressed: _showSettingsDialog,
-                    tooltip: 'Настройки',
+                    tooltip: 'settings',
                   ),
                   Text(
                     _isMultiSelectMode 
@@ -459,23 +459,6 @@ class _HomePageState extends State<HomePage> {
             FontAwesomeIcons.images,
             size: 70,
             color: app_theme.AppColors.secondary,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Нет фотографий',
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: app_theme.AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Нажмите на кнопку "Фото" внизу',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              color: app_theme.AppColors.textSecondary,
-            ),
           ),
         ],
       ),
@@ -682,26 +665,16 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           Expanded(
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: _takePhoto,
-              icon: const Icon(FontAwesomeIcons.camera, size: 14),
-              label: const Text(
-                'Фото',
-                style: TextStyle(fontSize: 13),
-              ),
+              child: const Icon(FontAwesomeIcons.camera, size: 20),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: hasSelectedImages ? _deleteSelectedImages : null,
-              icon: const Icon(FontAwesomeIcons.trash, size: 14),
-              label: Text(
-                _isMultiSelectMode && _selectedImageIndices.length > 1 
-                    ? 'Удалить (${_selectedImageIndices.length})' 
-                    : 'Удалить',
-                style: const TextStyle(fontSize: 13),
-              ),
+              child: const Icon(FontAwesomeIcons.trash, size: 20),
               style: ElevatedButton.styleFrom(
                 backgroundColor: hasSelectedImages ? app_theme.AppColors.error : Colors.grey.shade300,
                 foregroundColor: hasSelectedImages ? Colors.white : Colors.grey.shade600,
@@ -710,13 +683,9 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: ElevatedButton.icon(
+            child: ElevatedButton(
               onPressed: _imagePaths.isNotEmpty ? _startPresentation : null,
-              icon: const Icon(FontAwesomeIcons.play, size: 14),
-              label: const Text(
-                'Показать',
-                style: TextStyle(fontSize: 13),
-              ),
+              child: const Icon(FontAwesomeIcons.play, size: 20),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _imagePaths.isNotEmpty ? app_theme.AppColors.secondary : Colors.grey.shade300,
                 foregroundColor: _imagePaths.isNotEmpty ? Colors.white : Colors.grey.shade600,
