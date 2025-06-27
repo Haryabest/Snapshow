@@ -1048,15 +1048,15 @@ class _PresentationPageState extends State<PresentationPage> {
       (timer) {
         if (_currentPage < widget.imagePaths.length - 1) {
           _currentPage++;
+          _pageController.animateToPage(
+            _currentPage,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
         } else {
-          _currentPage = 0; // Перезапускаем цикл, когда достигли последнего изображения
+          // Достигли конца галереи, останавливаем таймер
+          _timer.cancel();
         }
-        
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
       },
     );
   }
