@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -8,8 +9,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_colors.dart' as app_theme;
 import '../main.dart' show cameras; // Импортируем только cameras из main.dart
-import 'camera_page.dart' hide AppColors; // Скрываем AppColors из camera_page.dart
-import 'presentation_page.dart' hide AppColors; // Скрываем AppColors из presentation_page.dart
+import '../services/session_service.dart';
+import '../models/photo_item.dart';
+import 'camera_page.dart';
+import 'presentation_page.dart';
+import 'session_dialog.dart';
+import 'barcode_scanner_page.dart';
+import 'barcode_display_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,8 +25,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Список путей к изображениям
-  final List<String> _imagePaths = [];
+  // Список элементов фотографий с штрихкодами
+  final List<PhotoItem> _photoItems = [];
   
   // Множество выбранных изображений (для множественного выбора)
   final Set<int> _selectedImageIndices = {};
@@ -36,6 +42,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _requestPermissions();
+    _checkForExistingSession();
   }
   
   // Метод для запроса необходимых разрешений
@@ -149,11 +156,13 @@ class _HomePageState extends State<HomePage> {
             controller: controller,
             onPhotoTaken: (String imagePath) {
               setState(() {
-                _imagePaths.add(imagePath);
+                _photoItems.add(PhotoItem(imagePath: imagePath));
                 // Очищаем выбор при добавлении нового фото
                 _selectedImageIndices.clear();
                 _isMultiSelectMode = false;
               });
+              // Автосохранение сессии
+              _autoSaveSession();
             },
           ),
         ),
@@ -173,18 +182,18 @@ class _HomePageState extends State<HomePage> {
       ..sort((a, b) => b.compareTo(a));
     
     for (final index in sortedIndices) {
-      if (index < _imagePaths.length) {
-        final imagePath = _imagePaths[index];
+      if (index < _photoItems.length) {
+        final photoItem = _photoItems[index];
         
         // Удаляем файл с устройства
         try {
-          File(imagePath).delete();
+          File(photoItem.imagePath).delete();
         } catch (e) {
           debugPrint('Ошибка при удалении файла: $e');
         }
         
-        // Удаляем путь из списка
-        _imagePaths.removeAt(index);
+        // Удаляем элемент из списка
+        _photoItems.removeAt(index);
       }
     }
     
@@ -192,23 +201,118 @@ class _HomePageState extends State<HomePage> {
       _selectedImageIndices.clear();
       _isMultiSelectMode = false;
     });
+    
+    // Автосохранение сессии после удаления
+    _autoSaveSession();
   }
   
   // Метод для удаления изображения по индексу
   void _deleteImage(int index) {
-    final imagePath = _imagePaths[index];
+    final photoItem = _photoItems[index];
     setState(() {
-      _imagePaths.removeAt(index);
+      _photoItems.removeAt(index);
       _selectedImageIndices.clear();
       _isMultiSelectMode = false;
     });
     
     // Удаляем файл с устройства
     try {
-      File(imagePath).delete();
+      File(photoItem.imagePath).delete();
     } catch (e) {
       debugPrint('Ошибка при удалении файла: $e');
     }
+    
+    // Автосохранение сессии после удаления
+    _autoSaveSession();
+  }
+  
+  // Метод для сканирования штрихкода
+  void _scanBarcode(int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BarcodeScannerPage(
+          imagePath: _photoItems[index].imagePath,
+          onBarcodeScanned: (String barcode) {
+            setState(() {
+              _photoItems[index] = _photoItems[index].copyWith(barcode: barcode);
+            });
+            _autoSaveSession();
+            _showSnackBar('Штрихкод привязан к фотографии');
+          },
+        ),
+      ),
+    );
+  }
+  
+  // Метод для увеличения количества штрихкодов
+  void _increaseBarcodeCount(int index) {
+    if (_photoItems[index].barcode != null) {
+      setState(() {
+        _photoItems[index] = _photoItems[index].copyWith(
+          barcodeCount: _photoItems[index].barcodeCount + 1,
+        );
+      });
+      _autoSaveSession();
+    }
+  }
+  
+  // Метод для уменьшения количества штрихкодов
+  void _decreaseBarcodeCount(int index) {
+    if (_photoItems[index].barcode != null && _photoItems[index].barcodeCount > 1) {
+      setState(() {
+        _photoItems[index] = _photoItems[index].copyWith(
+          barcodeCount: _photoItems[index].barcodeCount - 1,
+        );
+      });
+      _autoSaveSession();
+    }
+  }
+  
+  // Метод для отображения только штрихкодов
+  void _showBarcodesOnly() {
+    final itemsWithBarcodes = _photoItems.where((item) => item.barcode != null).toList();
+    
+    if (itemsWithBarcodes.isEmpty) {
+      _showSnackBar('Нет фотографий со штрихкодами');
+      return;
+    }
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BarcodeDisplayPage(
+          photoItems: itemsWithBarcodes,
+          displayDuration: _displayDuration,
+        ),
+      ),
+    );
+  }
+  
+  // Метод для отображения штрихкодов с повторениями (тележка)
+  void _showBarcodesWithRepeats() {
+    final itemsWithBarcodes = _photoItems.where((item) => item.barcode != null).toList();
+    
+    if (itemsWithBarcodes.isEmpty) {
+      _showSnackBar('Нет фотографий со штрихкодами');
+      return;
+    }
+    
+    // Создаем список штрихкодов с учетом повторений
+    List<PhotoItem> expandedBarcodes = [];
+    for (final item in itemsWithBarcodes) {
+      for (int i = 0; i < item.barcodeCount; i++) {
+        expandedBarcodes.add(item);
+      }
+    }
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BarcodeDisplayPage(
+          photoItems: expandedBarcodes,
+          displayDuration: _displayDuration,
+          isCartMode: true, // Флаг для режима тележки
+        ),
+      ),
+    );
   }
   
   // Метод для отображения настроек
@@ -350,7 +454,7 @@ class _HomePageState extends State<HomePage> {
   
   // Метод для запуска демонстрации изображений
   void _startPresentation() {
-    if (_imagePaths.isEmpty) {
+    if (_photoItems.isEmpty) {
       _showSnackBar('Нет изображений для показа');
       return;
     }
@@ -358,7 +462,7 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => PresentationPage(
-          imagePaths: _imagePaths,
+          imagePaths: _photoItems.map((item) => item.imagePath).toList(),
           displayDuration: _displayDuration,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -394,9 +498,88 @@ class _HomePageState extends State<HomePage> {
     });
   }
   
+  // Проверка существующей сессии при запуске
+  Future<void> _checkForExistingSession() async {
+    final hasSession = await SessionService.hasSession();
+    
+    if (hasSession && mounted) {
+      // Показываем диалог выбора сессии
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => SessionDialog(
+          onContinueSession: _continueSession,
+          onNewSession: _startNewSession,
+        ),
+      );
+    }
+  }
+  
+  // Продолжить существующую сессию
+  Future<void> _continueSession() async {
+    final photoItems = await SessionService.getCurrentPhotoItems();
+    setState(() {
+      _photoItems.clear();
+      _photoItems.addAll(photoItems);
+      _selectedImageIndices.clear();
+      _isMultiSelectMode = false;
+    });
+  }
+  
+  // Начать новую сессию
+  void _startNewSession() {
+    setState(() {
+      _photoItems.clear();
+      _selectedImageIndices.clear();
+      _isMultiSelectMode = false;
+    });
+  }
+  
+  // Автосохранение сессии
+  Future<void> _autoSaveSession() async {
+    final isAutoSaveEnabled = await SessionService.isAutoSaveEnabled();
+    if (isAutoSaveEnabled && _photoItems.isNotEmpty) {
+      await SessionService.savePhotoItems(_photoItems);
+    }
+  }
+  
+  // Обработка выхода из приложения
+  Future<bool> _onWillPop() async {
+    if (_photoItems.isEmpty) {
+      return true; // Разрешаем выход, если нет фотографий
+    }
+    
+    // Показываем диалог выхода
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => ExitDialog(
+        imagePaths: _photoItems.map((item) => item.imagePath).toList(),
+        onSave: () {
+          SystemNavigator.pop(); // Выходим из приложения
+        },
+        onDelete: () {
+          SystemNavigator.pop(); // Выходим из приложения
+        },
+        onCancel: () {
+          // Ничего не делаем, диалог уже закрыт
+        },
+      ),
+    );
+    
+    return false; // Не разрешаем автоматический выход
+  }
+  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _onWillPop();
+        }
+      },
+      child: Scaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -424,10 +607,10 @@ class _HomePageState extends State<HomePage> {
                     icon: Icon(
                       _isMultiSelectMode 
                           ? FontAwesomeIcons.xmark 
-                          : FontAwesomeIcons.checkSquare,
+                          : FontAwesomeIcons.squareCheck,
                       size: 20
                     ),
-                    onPressed: _imagePaths.isNotEmpty ? _toggleMultiSelectMode : null,
+                    onPressed: _photoItems.isNotEmpty ? _toggleMultiSelectMode : null,
                     tooltip: _isMultiSelectMode ? 'Отменить выбор' : 'Выбрать несколько',
                   ),
                 ],
@@ -436,7 +619,7 @@ class _HomePageState extends State<HomePage> {
             
             // Область для отображения иконок изображений
             Expanded(
-              child: _imagePaths.isEmpty
+              child: _photoItems.isEmpty
                   ? _buildEmptyState()
                   : _buildImageGrid(),
             ),
@@ -445,6 +628,7 @@ class _HomePageState extends State<HomePage> {
             _buildBottomPanel(),
           ],
         ),
+      ),
       ),
     );
   }
@@ -476,7 +660,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisCount: 3,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        itemCount: _imagePaths.length,
+        itemCount: _photoItems.length,
         itemBuilder: (context, index) {
           return _buildImageItem(index);
         },
@@ -489,7 +673,7 @@ class _HomePageState extends State<HomePage> {
     final isSelected = _selectedImageIndices.contains(index);
     
     return Dismissible(
-      key: Key(_imagePaths[index]),
+      key: Key(_photoItems[index].imagePath),
       direction: DismissDirection.horizontal,
       background: Container(
         decoration: BoxDecoration(
@@ -591,50 +775,166 @@ class _HomePageState extends State<HomePage> {
             });
           }
         },
-        child: Stack(
+        child: Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? app_theme.AppColors.primary
-                      : Colors.transparent,
-                  width: 3,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            // Изображение
+            Expanded(
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? app_theme.AppColors.primary
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        File(_photoItems[index].imagePath),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
+                  
+                  // Индикатор штрихкода
+                  if (_photoItems[index].barcode != null)
+                    Positioned(
+                      top: 5,
+                      left: 5,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              FontAwesomeIcons.barcode,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${_photoItems[index].barcodeCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  
+                  if (isSelected)
+                    Positioned(
+                      top: 5,
+                      right: 5,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: app_theme.AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.file(
-                  File(_imagePaths[index]),
-                  fit: BoxFit.cover,
-                ),
+            ),
+            
+            // Панель управления штрихкодами
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  // Кнопка сканирования штрихкода
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _scanBarcode(index),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _photoItems[index].barcode != null 
+                              ? Colors.green.withOpacity(0.2)
+                              : app_theme.AppColors.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          FontAwesomeIcons.barcode,
+                          size: 14,
+                          color: _photoItems[index].barcode != null 
+                              ? Colors.green
+                              : app_theme.AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  if (_photoItems[index].barcode != null) ...[
+                    const SizedBox(width: 4),
+                    
+                    // Кнопка уменьшения количества
+                    GestureDetector(
+                      onTap: () => _decreaseBarcodeCount(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _photoItems[index].barcodeCount > 1
+                              ? app_theme.AppColors.error.withOpacity(0.2)
+                              : Colors.grey.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Icon(
+                          FontAwesomeIcons.minus,
+                          size: 10,
+                          color: _photoItems[index].barcodeCount > 1
+                              ? app_theme.AppColors.error
+                              : Colors.grey,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 4),
+                    
+                    // Кнопка увеличения количества
+                    GestureDetector(
+                      onTap: () => _increaseBarcodeCount(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(
+                          FontAwesomeIcons.plus,
+                          size: 10,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (isSelected)
-              Positioned(
-                top: 5,
-                right: 5,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: app_theme.AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -684,11 +984,47 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
           Expanded(
             child: ElevatedButton(
-              onPressed: _imagePaths.isNotEmpty ? _startPresentation : null,
+              onPressed: _photoItems.isNotEmpty ? _startPresentation : null,
               child: const Icon(FontAwesomeIcons.play, size: 20),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _imagePaths.isNotEmpty ? app_theme.AppColors.secondary : Colors.grey.shade300,
-                foregroundColor: _imagePaths.isNotEmpty ? Colors.white : Colors.grey.shade600,
+                backgroundColor: _photoItems.isNotEmpty ? app_theme.AppColors.secondary : Colors.grey.shade300,
+                foregroundColor: _photoItems.isNotEmpty ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 8),
+          
+          // Кнопка отображения штрихкодов
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _photoItems.any((item) => item.barcode != null) ? _showBarcodesOnly : null,
+              child: const Icon(FontAwesomeIcons.barcode, size: 20),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _photoItems.any((item) => item.barcode != null) 
+                    ? Colors.green 
+                    : Colors.grey.shade300,
+                foregroundColor: _photoItems.any((item) => item.barcode != null) 
+                    ? Colors.white 
+                    : Colors.grey.shade600,
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 8),
+          
+          // Кнопка тележки (штрихкоды с повторениями)
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _photoItems.any((item) => item.barcode != null) ? _showBarcodesWithRepeats : null,
+              child: const Icon(FontAwesomeIcons.cartShopping, size: 20),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _photoItems.any((item) => item.barcode != null) 
+                    ? Colors.orange 
+                    : Colors.grey.shade300,
+                foregroundColor: _photoItems.any((item) => item.barcode != null) 
+                    ? Colors.white 
+                    : Colors.grey.shade600,
               ),
             ),
           ),
@@ -696,4 +1032,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-} 
+}

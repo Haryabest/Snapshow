@@ -65,6 +65,15 @@ dependencies:
   
   # Для улучшенных слайдеров
   syncfusion_flutter_sliders: ^23.2.7
+  
+  # Для работы с локальным хранилищем
+  shared_preferences: ^2.2.2
+  
+  # Для сканирования штрихкодов
+  mobile_scanner: ^5.0.0
+  
+  # Для генерации штрихкодов
+  barcode_widget: ^2.0.4
 
 dev_dependencies:
   flutter_test:
