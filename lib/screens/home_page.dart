@@ -297,19 +297,27 @@ class _HomePageState extends State<HomePage> {
     }
   }
   
-  // Метод для отображения только штрихкодов
+  // Метод для отображения только штрихкодов (выбранных фото)
   void _showBarcodesOnly() {
-    final itemsWithBarcodes = _photoItems.where((item) => item.barcode != null).toList();
+    // Получаем только выбранные фото со штрихкодами
+    final selectedItemsWithBarcodes = _selectedImageIndices
+        .map((index) => _photoItems[index])
+        .where((item) => item.barcode != null)
+        .toList();
     
-    if (itemsWithBarcodes.isEmpty) {
-      _showSnackBar('Нет фотографий со штрихкодами');
+    if (selectedItemsWithBarcodes.isEmpty) {
+      if (_selectedImageIndices.isEmpty) {
+        _showSnackBar('Не выбрано ни одной фотографии');
+      } else {
+        _showSnackBar('У выбранных фотографий нет штрихкодов');
+      }
       return;
     }
     
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => BarcodeDisplayPage(
-          photoItems: itemsWithBarcodes,
+          photoItems: selectedItemsWithBarcodes,
           displayDuration: _displayDuration,
         ),
       ),
@@ -318,16 +326,24 @@ class _HomePageState extends State<HomePage> {
   
   // Метод для отображения штрихкодов с повторениями (тележка)
   void _showBarcodesWithRepeats() {
-    final itemsWithBarcodes = _photoItems.where((item) => item.barcode != null).toList();
+    // Получаем только выбранные фото со штрихкодами
+    final selectedItemsWithBarcodes = _selectedImageIndices
+        .map((index) => _photoItems[index])
+        .where((item) => item.barcode != null)
+        .toList();
     
-    if (itemsWithBarcodes.isEmpty) {
-      _showSnackBar('Нет фотографий со штрихкодами');
+    if (selectedItemsWithBarcodes.isEmpty) {
+      if (_selectedImageIndices.isEmpty) {
+        _showSnackBar('Не выбрано ни одной фотографии');
+      } else {
+        _showSnackBar('У выбранных фотографий нет штрихкодов');
+      }
       return;
     }
     
     // Создаем список штрихкодов с учетом повторений
     List<PhotoItem> expandedBarcodes = [];
-    for (final item in itemsWithBarcodes) {
+    for (final item in selectedItemsWithBarcodes) {
       for (int i = 0; i < item.barcodeCount; i++) {
         expandedBarcodes.add(item);
       }
@@ -520,9 +536,25 @@ class _HomePageState extends State<HomePage> {
   // Метод для переключения режима множественного выбора
   void _toggleMultiSelectMode() {
     setState(() {
-      _isMultiSelectMode = !_isMultiSelectMode;
-      if (!_isMultiSelectMode) {
+      if (_isMultiSelectMode) {
+        // Если все фото выбраны, отменяем выбор
+        if (_selectedImageIndices.length == _photoItems.length) {
+          _selectedImageIndices.clear();
+          _isMultiSelectMode = false;
+        } else {
+          // Иначе выбираем все
+          _selectedImageIndices.clear();
+          for (int i = 0; i < _photoItems.length; i++) {
+            _selectedImageIndices.add(i);
+          }
+        }
+      } else {
+        // Включаем режим множественного выбора и выбираем все
+        _isMultiSelectMode = true;
         _selectedImageIndices.clear();
+        for (int i = 0; i < _photoItems.length; i++) {
+          _selectedImageIndices.add(i);
+        }
       }
     });
   }
@@ -720,19 +752,6 @@ class _HomePageState extends State<HomePage> {
               _showClearSessionDialog();
             },
           ),
-          
-          // О приложении
-          ListTile(
-            leading: const Icon(FontAwesomeIcons.circleInfo, color: app_theme.AppColors.primary),
-            title: Text(
-              'О приложении',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-            ),
-            onTap: () {
-              Navigator.of(context).pop();
-              _showAboutDialog();
-            },
-          ),
         ],
       ),
     );
@@ -806,53 +825,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-  
-  // Диалог "О приложении"
-  void _showAboutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AboutDialog(
-        applicationName: 'Snapshow',
-        applicationVersion: '1.0.0',
-        applicationIcon: const Icon(
-          FontAwesomeIcons.camera,
-          size: 50,
-          color: app_theme.AppColors.primary,
-        ),
-        children: [
-          Text(
-            'Приложение для создания фотографий с привязанными штрихкодами и их последующего показа.',
-            style: GoogleFonts.poppins(),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Возможности:',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...[
-            '• Съемка фотографий',
-            '• Сканирование штрихкодов',
-            '• Привязка штрихкодов к фото',
-            '• Настройка количества повторений',
-            '• Презентация с настраиваемым временем',
-            '• Автосохранение сессий',
-          ].map((feature) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              feature,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: app_theme.AppColors.textSecondary,
-              ),
-            ),
-          )),
         ],
       ),
     );
@@ -1267,6 +1239,10 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBottomPanel() {
     final bool hasSelectedImages = _selectedImageIndices.isNotEmpty;
     
+    // Проверяем, есть ли у выбранных фото штрихкоды
+    final bool hasSelectedBarcodes = hasSelectedImages && _selectedImageIndices
+        .any((index) => _photoItems[index].barcode != null);
+    
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: const BoxDecoration(
@@ -1317,16 +1293,16 @@ class _HomePageState extends State<HomePage> {
           
           const SizedBox(width: 8),
           
-          // Кнопка отображения штрихкодов
+          // Кнопка отображения штрихкодов (только выбранные)
           Expanded(
             child: ElevatedButton(
-              onPressed: _photoItems.any((item) => item.barcode != null) ? _showBarcodesOnly : null,
+              onPressed: hasSelectedBarcodes ? _showBarcodesOnly : null,
               child: const Icon(FontAwesomeIcons.barcode, size: 20),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _photoItems.any((item) => item.barcode != null) 
+                backgroundColor: hasSelectedBarcodes 
                     ? Colors.green 
                     : Colors.grey.shade300,
-                foregroundColor: _photoItems.any((item) => item.barcode != null) 
+                foregroundColor: hasSelectedBarcodes 
                     ? Colors.white 
                     : Colors.grey.shade600,
               ),
@@ -1335,16 +1311,16 @@ class _HomePageState extends State<HomePage> {
           
           const SizedBox(width: 8),
           
-          // Кнопка тележки (штрихкоды с повторениями)
+          // Кнопка тележки (штрихкоды с повторениями, только выбранные)
           Expanded(
             child: ElevatedButton(
-              onPressed: _photoItems.any((item) => item.barcode != null) ? _showBarcodesWithRepeats : null,
+              onPressed: hasSelectedBarcodes ? _showBarcodesWithRepeats : null,
               child: const Icon(FontAwesomeIcons.cartShopping, size: 20),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _photoItems.any((item) => item.barcode != null) 
+                backgroundColor: hasSelectedBarcodes 
                     ? Colors.orange 
                     : Colors.grey.shade300,
-                foregroundColor: _photoItems.any((item) => item.barcode != null) 
+                foregroundColor: hasSelectedBarcodes 
                     ? Colors.white 
                     : Colors.grey.shade600,
               ),
