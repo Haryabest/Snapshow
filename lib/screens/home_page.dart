@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
+import 'package:camera/camera.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -135,10 +136,25 @@ class _HomePageState extends State<HomePage> {
   
   // Метод для съемки фото
   Future<void> _takePhoto() async {
+    debugPrint('Попытка сделать фото. Количество доступных камер: ${cameras.length}');
+    
     if (cameras.isEmpty) {
-      _showSnackBar('Камера недоступна');
-      return;
+      debugPrint('Камеры недоступны. Попытка получить список камер...');
+      try {
+        cameras = await availableCameras();
+        debugPrint('Получено камер: ${cameras.length}');
+        if (cameras.isEmpty) {
+          _showSnackBar('Камера недоступна на этом устройстве');
+          return;
+        }
+      } catch (e) {
+        debugPrint('Ошибка получения камер: $e');
+        _showSnackBar('Ошибка доступа к камере: $e');
+        return;
+      }
     }
+    
+    debugPrint('Инициализация контроллера камеры...');
     
     final CameraController controller = CameraController(
       cameras[0],
@@ -147,16 +163,23 @@ class _HomePageState extends State<HomePage> {
     
     try {
       await controller.initialize();
+      debugPrint('Контроллер камеры успешно инициализирован');
       
       if (!mounted) return;
+      
+      debugPrint('Открытие страницы камеры...');
       
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => CameraPage(
             controller: controller,
             onPhotoTaken: (String imagePath) {
+              debugPrint('onPhotoTaken callback получен с путем: $imagePath');
+              debugPrint('Текущее количество фото: ${_photoItems.length}');
+              
               setState(() {
                 _photoItems.add(PhotoItem(imagePath: imagePath));
+                debugPrint('Фото добавлено. Новое количество: ${_photoItems.length}');
                 // Очищаем выбор при добавлении нового фото
                 _selectedImageIndices.clear();
                 _isMultiSelectMode = false;
@@ -169,7 +192,13 @@ class _HomePageState extends State<HomePage> {
       );
     } catch (e) {
       debugPrint('Ошибка инициализации камеры: $e');
-      _showSnackBar('Не удалось инициализировать камеру');
+      _showSnackBar('Не удалось инициализировать камеру: $e');
+      // Освобождаем ресурсы контроллера
+      try {
+        await controller.dispose();
+      } catch (disposeError) {
+        debugPrint('Ошибка при освобождении контроллера: $disposeError');
+      }
     }
   }
   
@@ -905,6 +934,32 @@ class _HomePageState extends State<HomePage> {
             FontAwesomeIcons.images,
             size: 70,
             color: app_theme.AppColors.secondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Нет фотографий',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: app_theme.AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Нажмите кнопку камеры для съёмки',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: app_theme.AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Фото в списке: ${_photoItems.length}',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: app_theme.AppColors.textSecondary,
+            ),
           ),
         ],
       ),

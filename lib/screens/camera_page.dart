@@ -29,25 +29,39 @@ class _CameraPageState extends State<CameraPage> {
     });
 
     try {
+      debugPrint('Начинаем съемку фото...');
+      
       // Создаем уникальное имя файла
       final Directory extDir = await getApplicationDocumentsDirectory();
       final String dirPath = '${extDir.path}/Pictures/snapshow';
       await Directory(dirPath).create(recursive: true);
       final String filePath = '$dirPath/${DateTime.now().millisecondsSinceEpoch}.jpg';
       
+      debugPrint('Путь для сохранения: $filePath');
+      
       // Делаем снимок
       final XFile imageFile = await widget.controller.takePicture();
+      debugPrint('Фото сделано: ${imageFile.path}');
       
       // Копируем файл в наше хранилище
       await File(imageFile.path).copy(filePath);
+      debugPrint('Файл скопирован в: $filePath');
       
-      widget.onPhotoTaken(filePath);
-      Navigator.of(context).pop();
+      // Проверяем, что файл действительно существует
+      final savedFile = File(filePath);
+      if (await savedFile.exists()) {
+        debugPrint('Файл успешно сохранен, размер: ${await savedFile.length()} байт');
+        widget.onPhotoTaken(filePath);
+        debugPrint('Callback onPhotoTaken вызван с путем: $filePath');
+        Navigator.of(context).pop();
+      } else {
+        throw Exception('Файл не был сохранен');
+      }
     } catch (e) {
       debugPrint('Ошибка при съемке фото: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Не удалось сделать фото'),
+          content: Text('Не удалось сделать фото: $e'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.error,
           shape: RoundedRectangleBorder(
