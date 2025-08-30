@@ -490,17 +490,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
   
-  // Метод для запуска демонстрации изображений
+  // Метод для запуска демонстрации изображений (только выбранные фото)
   void _startPresentation() {
-    if (_photoItems.isEmpty) {
-      _showSnackBar('Нет изображений для показа');
+    if (_selectedImageIndices.isEmpty) {
+      _showSnackBar('Не выбрано ни одной фотографии');
       return;
     }
+    
+    // Получаем пути только выбранных фотографий
+    final selectedImagePaths = _selectedImageIndices
+        .map((index) => _photoItems[index].imagePath)
+        .toList();
     
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => PresentationPage(
-          imagePaths: _photoItems.map((item) => item.imagePath).toList(),
+          imagePaths: selectedImagePaths,
           displayDuration: _displayDuration,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -852,11 +857,14 @@ class _HomePageState extends State<HomePage> {
                   ),
                   Text(
                     _isMultiSelectMode 
-                        ? 'Выбрано: ${_selectedImageIndices.length}' 
-                        : 'Галерея',
+                        ? 'Выбрано: ${_selectedImageIndices.length} из ${_photoItems.length}' 
+                        : 'Галерея (${_photoItems.length})',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
+                      color: _isMultiSelectMode 
+                          ? app_theme.AppColors.primary
+                          : app_theme.AppColors.textPrimary,
                     ),
                   ),
                   IconButton(
@@ -867,7 +875,11 @@ class _HomePageState extends State<HomePage> {
                       size: 20
                     ),
                     onPressed: _photoItems.isNotEmpty ? _toggleMultiSelectMode : null,
-                    tooltip: _isMultiSelectMode ? 'Отменить выбор' : 'Выбрать несколько',
+                    tooltip: _isMultiSelectMode 
+                        ? (_selectedImageIndices.length == _photoItems.length 
+                            ? 'Отменить все' 
+                            : 'Выбрать все') 
+                        : 'Выбрать несколько',
                   ),
                 ],
               ),
@@ -1023,9 +1035,9 @@ class _HomePageState extends State<HomePage> {
       },
       child: GestureDetector(
         onTap: () {
-          // В режиме множественного выбора, нажатие переключает выбор
-          if (_isMultiSelectMode) {
-            setState(() {
+          setState(() {
+            if (_isMultiSelectMode) {
+              // В режиме множественного выбора переключаем выбор
               if (isSelected) {
                 _selectedImageIndices.remove(index);
                 // Если отменили выбор последнего элемента, выходим из режима
@@ -1035,24 +1047,20 @@ class _HomePageState extends State<HomePage> {
               } else {
                 _selectedImageIndices.add(index);
               }
-            });
-          } else {
-            // В обычном режиме просто выделяем одно изображение для возможного удаления
-            setState(() {
-              if (isSelected) {
-                _selectedImageIndices.clear();
-              } else {
-                _selectedImageIndices.clear();
-                _selectedImageIndices.add(index);
-              }
-            });
-          }
+            } else {
+              // В обычном режиме включаем множественный выбор и выбираем это фото
+              _isMultiSelectMode = true;
+              _selectedImageIndices.clear();
+              _selectedImageIndices.add(index);
+            }
+          });
         },
         onLongPress: () {
-          // Включаем режим множественного выбора по долгому нажатию
+          // Длинное нажатие также включает режим множественного выбора
           if (!_isMultiSelectMode) {
             setState(() {
               _isMultiSelectMode = true;
+              _selectedImageIndices.clear();
               _selectedImageIndices.add(index);
             });
           }
@@ -1278,11 +1286,11 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
           Expanded(
             child: ElevatedButton(
-              onPressed: _photoItems.isNotEmpty ? _startPresentation : null,
+              onPressed: hasSelectedImages ? _startPresentation : null,
               child: const Icon(FontAwesomeIcons.play, size: 20),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _photoItems.isNotEmpty ? app_theme.AppColors.secondary : Colors.grey.shade300,
-                foregroundColor: _photoItems.isNotEmpty ? Colors.white : Colors.grey.shade600,
+                backgroundColor: hasSelectedImages ? app_theme.AppColors.secondary : Colors.grey.shade300,
+                foregroundColor: hasSelectedImages ? Colors.white : Colors.grey.shade600,
               ),
             ),
           ),
