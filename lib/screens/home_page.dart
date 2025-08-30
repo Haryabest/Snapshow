@@ -702,7 +702,7 @@ class _HomePageState extends State<HomePage> {
               style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
-              'Фото: ${_photoItems.length}, Штрихкоды: ${_photoItems.where((item) => item.barcode != null).length}',
+              'Фото: ${_photoItems.length}, Штрихкоды: ${_photoItems.where((item) => item.barcode != null).fold<int>(0, (sum, item) => sum + item.barcodeCount)}',
               style: GoogleFonts.poppins(color: app_theme.AppColors.textSecondary),
             ),
           ),
