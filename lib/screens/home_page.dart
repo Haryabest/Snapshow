@@ -301,11 +301,20 @@ class _HomePageState extends State<HomePage> {
   
   // Метод для уменьшения количества штрихкодов
   void _decreaseBarcodeCount(int index) {
-    if (_photoItems[index].barcode != null && _photoItems[index].barcodeCount > 1) {
+    if (_photoItems[index].barcode != null) {
       setState(() {
-        _photoItems[index] = _photoItems[index].copyWith(
-          barcodeCount: _photoItems[index].barcodeCount - 1,
-        );
+        if (_photoItems[index].barcodeCount > 1) {
+          // Уменьшаем количество
+          _photoItems[index] = _photoItems[index].copyWith(
+            barcodeCount: _photoItems[index].barcodeCount - 1,
+          );
+        } else {
+          // Полностью удаляем штрихкод
+          _photoItems[index] = _photoItems[index].copyWith(
+            barcode: null,
+            barcodeCount: 1,
+          );
+        }
       });
       _autoSaveSession();
     }
@@ -1211,23 +1220,19 @@ class _HomePageState extends State<HomePage> {
                   if (_photoItems[index].barcode != null) ...[
                     const SizedBox(width: 4),
                     
-                    // Кнопка уменьшения количества
+                    // Кнопка уменьшения количества/удаления штрихкода
                     GestureDetector(
                       onTap: () => _decreaseBarcodeCount(index),
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: _photoItems[index].barcodeCount > 1
-                              ? app_theme.AppColors.error.withOpacity(0.2)
-                              : Colors.grey.withOpacity(0.2),
+                          color: app_theme.AppColors.error.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           FontAwesomeIcons.minus,
                           size: 10,
-                          color: _photoItems[index].barcodeCount > 1
-                              ? app_theme.AppColors.error
-                              : Colors.grey,
+                          color: app_theme.AppColors.error,
                         ),
                       ),
                     ),
