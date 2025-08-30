@@ -570,6 +570,265 @@ class _HomePageState extends State<HomePage> {
     return false; // Не разрешаем автоматический выход
   }
   
+  // Построение навигационного меню
+  Widget _buildNavigationDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  app_theme.AppColors.primary,
+                  app_theme.AppColors.secondary,
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  FontAwesomeIcons.camera,
+                  color: Colors.white,
+                  size: 40,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Snapshow',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Фото с штрихкодами',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Настройки времени показа
+          ListTile(
+            leading: const Icon(FontAwesomeIcons.clock, color: app_theme.AppColors.primary),
+            title: Text(
+              'Время показа',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              '$_displayDuration секунд',
+              style: GoogleFonts.poppins(color: app_theme.AppColors.textSecondary),
+            ),
+            trailing: const Icon(FontAwesomeIcons.chevronRight, size: 16),
+            onTap: () {
+              Navigator.of(context).pop();
+              _showSettingsDialog();
+            },
+          ),
+          
+          const Divider(),
+          
+          // Статистика сессии
+          ListTile(
+            leading: const Icon(FontAwesomeIcons.chartSimple, color: app_theme.AppColors.secondary),
+            title: Text(
+              'Статистика сессии',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              'Фото: ${_photoItems.length}, Штрихкоды: ${_photoItems.where((item) => item.barcode != null).length}',
+              style: GoogleFonts.poppins(color: app_theme.AppColors.textSecondary),
+            ),
+          ),
+          
+          // Автосохранение
+          FutureBuilder<bool>(
+            future: SessionService.isAutoSaveEnabled(),
+            builder: (context, snapshot) {
+              final isAutoSaveEnabled = snapshot.data ?? true;
+              return SwitchListTile(
+                secondary: const Icon(FontAwesomeIcons.floppyDisk, color: app_theme.AppColors.primary),
+                title: Text(
+                  'Автосохранение',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  isAutoSaveEnabled ? 'Включено' : 'Отключено',
+                  style: GoogleFonts.poppins(color: app_theme.AppColors.textSecondary),
+                ),
+                value: isAutoSaveEnabled,
+                activeColor: app_theme.AppColors.primary,
+                onChanged: (value) async {
+                  await SessionService.setAutoSave(value);
+                  setState(() {}); // Обновляем UI
+                },
+              );
+            },
+          ),
+          
+          const Divider(),
+          
+          // Очистить сессию
+          ListTile(
+            leading: const Icon(FontAwesomeIcons.broom, color: app_theme.AppColors.error),
+            title: Text(
+              'Очистить сессию',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              'Удалить все фото и штрихкоды',
+              style: GoogleFonts.poppins(color: app_theme.AppColors.textSecondary),
+            ),
+            onTap: () {
+              Navigator.of(context).pop();
+              _showClearSessionDialog();
+            },
+          ),
+          
+          // О приложении
+          ListTile(
+            leading: const Icon(FontAwesomeIcons.circleInfo, color: app_theme.AppColors.primary),
+            title: Text(
+              'О приложении',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+            ),
+            onTap: () {
+              Navigator.of(context).pop();
+              _showAboutDialog();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Диалог очистки сессии
+  void _showClearSessionDialog() {
+    if (_photoItems.isEmpty) {
+      _showSnackBar('Сессия уже пуста');
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Очистить сессию',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Все фотографии и штрихкоды из текущей сессии будут удалены. Это действие нельзя отменить.',
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Отмена',
+              style: GoogleFonts.poppins(
+                color: app_theme.AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              
+              // Удаляем все файлы
+              for (final item in _photoItems) {
+                try {
+                  await File(item.imagePath).delete();
+                } catch (e) {
+                  debugPrint('Ошибка при удалении файла: $e');
+                }
+              }
+              
+              // Очищаем сессию
+              await SessionService.clearSession();
+              
+              // Обновляем UI
+              setState(() {
+                _photoItems.clear();
+                _selectedImageIndices.clear();
+                _isMultiSelectMode = false;
+              });
+              
+              _showSnackBar('Сессия очищена');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: app_theme.AppColors.error,
+            ),
+            child: Text(
+              'Очистить',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Диалог "О приложении"
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AboutDialog(
+        applicationName: 'Snapshow',
+        applicationVersion: '1.0.0',
+        applicationIcon: const Icon(
+          FontAwesomeIcons.camera,
+          size: 50,
+          color: app_theme.AppColors.primary,
+        ),
+        children: [
+          Text(
+            'Приложение для создания фотографий с привязанными штрихкодами и их последующего показа.',
+            style: GoogleFonts.poppins(),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Возможности:',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...[
+            '• Съемка фотографий',
+            '• Сканирование штрихкодов',
+            '• Привязка штрихкодов к фото',
+            '• Настройка количества повторений',
+            '• Презентация с настраиваемым временем',
+            '• Автосохранение сессий',
+          ].map((feature) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              feature,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: app_theme.AppColors.textSecondary,
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -580,6 +839,7 @@ class _HomePageState extends State<HomePage> {
         }
       },
       child: Scaffold(
+      drawer: _buildNavigationDrawer(),
       body: SafeArea(
         child: Column(
           children: [
@@ -589,10 +849,12 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: const Icon(FontAwesomeIcons.sliders, size: 20),
-                    onPressed: _showSettingsDialog,
-                    tooltip: 'settings',
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(FontAwesomeIcons.bars, size: 20),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                      tooltip: 'Меню',
+                    ),
                   ),
                   Text(
                     _isMultiSelectMode 
