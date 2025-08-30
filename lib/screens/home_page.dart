@@ -326,24 +326,17 @@ class _HomePageState extends State<HomePage> {
   
   // Метод для отображения штрихкодов с повторениями (тележка)
   void _showBarcodesWithRepeats() {
-    // Получаем только выбранные фото со штрихкодами
-    final selectedItemsWithBarcodes = _selectedImageIndices
-        .map((index) => _photoItems[index])
-        .where((item) => item.barcode != null)
-        .toList();
+    // Получаем все фото со штрихкодами
+    final itemsWithBarcodes = _photoItems.where((item) => item.barcode != null).toList();
     
-    if (selectedItemsWithBarcodes.isEmpty) {
-      if (_selectedImageIndices.isEmpty) {
-        _showSnackBar('Не выбрано ни одной фотографии');
-      } else {
-        _showSnackBar('У выбранных фотографий нет штрихкодов');
-      }
+    if (itemsWithBarcodes.isEmpty) {
+      _showSnackBar('Нет фотографий со штрихкодами');
       return;
     }
     
     // Создаем список штрихкодов с учетом повторений
     List<PhotoItem> expandedBarcodes = [];
-    for (final item in selectedItemsWithBarcodes) {
+    for (final item in itemsWithBarcodes) {
       for (int i = 0; i < item.barcodeCount; i++) {
         expandedBarcodes.add(item);
       }
@@ -373,7 +366,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               title: Text(
-                'settings',
+                'Настройки',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 22,
@@ -1239,9 +1232,12 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBottomPanel() {
     final bool hasSelectedImages = _selectedImageIndices.isNotEmpty;
     
-    // Проверяем, есть ли у выбранных фото штрихкоды
+    // Проверяем, есть ли у выбранных фото штрихкоды (для зеленой кнопки)
     final bool hasSelectedBarcodes = hasSelectedImages && _selectedImageIndices
         .any((index) => _photoItems[index].barcode != null);
+    
+    // Проверяем, есть ли штрихкоды у всех фото (для оранжевой кнопки корзины)
+    final bool hasAnyBarcodes = _photoItems.any((item) => item.barcode != null);
     
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -1311,16 +1307,16 @@ class _HomePageState extends State<HomePage> {
           
           const SizedBox(width: 8),
           
-          // Кнопка тележки (штрихкоды с повторениями, только выбранные)
+          // Кнопка тележки (штрихкоды с повторениями, все фото)
           Expanded(
             child: ElevatedButton(
-              onPressed: hasSelectedBarcodes ? _showBarcodesWithRepeats : null,
+              onPressed: hasAnyBarcodes ? _showBarcodesWithRepeats : null,
               child: const Icon(FontAwesomeIcons.cartShopping, size: 20),
               style: ElevatedButton.styleFrom(
-                backgroundColor: hasSelectedBarcodes 
+                backgroundColor: hasAnyBarcodes 
                     ? Colors.orange 
                     : Colors.grey.shade300,
-                foregroundColor: hasSelectedBarcodes 
+                foregroundColor: hasAnyBarcodes 
                     ? Colors.white 
                     : Colors.grey.shade600,
               ),
