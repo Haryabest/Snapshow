@@ -682,13 +682,6 @@ class _HomePageState extends State<HomePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  'Фото с штрихкодами',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
               ],
             ),
           ),
@@ -735,7 +728,11 @@ class _HomePageState extends State<HomePage> {
                 secondary: const Icon(FontAwesomeIcons.floppyDisk, color: app_theme.AppColors.primary),
                 title: Text(
                   'Автосохранение',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.visible,
+                  softWrap: false,
                 ),
                 subtitle: Text(
                   isAutoSaveEnabled ? 'Включено' : 'Отключено',
