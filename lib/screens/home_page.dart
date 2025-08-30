@@ -1040,10 +1040,13 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             // Изображение
-            Expanded(
+            AspectRatio(
+              aspectRatio: 1.0, // Квадратные изображения
               child: Stack(
                 children: [
                   Container(
+                    width: double.infinity,
+                    height: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -1065,6 +1068,8 @@ class _HomePageState extends State<HomePage> {
                       child: Image.file(
                         File(_photoItems[index].imagePath),
                         fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
                     ),
                   ),
