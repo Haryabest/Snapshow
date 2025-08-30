@@ -38,6 +38,20 @@ class _HomePageState extends State<HomePage> {
   // Длительность показа каждого изображения в секундах
   int _displayDuration = 2;
   
+  // Флаг для отслеживания того, была ли кнопка "выбрать все" использована
+  bool _selectAllButtonUsed = false;
+  
+  // Функция для склонения слова "секунда" по правилам русского языка
+  String _getSecondsText(int seconds) {
+    if (seconds % 10 == 1 && seconds % 100 != 11) {
+      return '$seconds секунда';
+    } else if ([2, 3, 4].contains(seconds % 10) && ![12, 13, 14].contains(seconds % 100)) {
+      return '$seconds секунды';
+    } else {
+      return '$seconds секунд';
+    }
+  }
+  
   // Запрашиваем разрешения при инициализации
   @override
   void initState() {
@@ -431,7 +445,7 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      'Выбрано: $tempDuration секунд',
+                      'Выбрано: ${_getSecondsText(tempDuration)}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
@@ -539,12 +553,14 @@ class _HomePageState extends State<HomePage> {
         if (_selectedImageIndices.length == _photoItems.length) {
           _selectedImageIndices.clear();
           _isMultiSelectMode = false;
+          _selectAllButtonUsed = false;
         } else {
           // Иначе выбираем все
           _selectedImageIndices.clear();
           for (int i = 0; i < _photoItems.length; i++) {
             _selectedImageIndices.add(i);
           }
+          _selectAllButtonUsed = true; // Отмечаем, что кнопка была использована
         }
       } else {
         // Включаем режим множественного выбора и выбираем все
@@ -553,6 +569,7 @@ class _HomePageState extends State<HomePage> {
         for (int i = 0; i < _photoItems.length; i++) {
           _selectedImageIndices.add(i);
         }
+        _selectAllButtonUsed = true; // Отмечаем, что кнопка была использована
       }
     });
   }
@@ -582,6 +599,7 @@ class _HomePageState extends State<HomePage> {
       _photoItems.addAll(photoItems);
       _selectedImageIndices.clear();
       _isMultiSelectMode = false;
+      _selectAllButtonUsed = false;
     });
   }
   
@@ -591,6 +609,7 @@ class _HomePageState extends State<HomePage> {
       _photoItems.clear();
       _selectedImageIndices.clear();
       _isMultiSelectMode = false;
+      _selectAllButtonUsed = false;
     });
   }
   
@@ -682,7 +701,7 @@ class _HomePageState extends State<HomePage> {
               style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
-              '$_displayDuration секунд',
+              _getSecondsText(_displayDuration),
               style: GoogleFonts.poppins(color: app_theme.AppColors.textSecondary),
             ),
             trailing: const Icon(FontAwesomeIcons.chevronRight, size: 16),
@@ -755,6 +774,91 @@ class _HomePageState extends State<HomePage> {
     );
   }
   
+  // Диалог настроек времени показа
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Настройки',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Интервал показа фотографий',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _getSecondsText(_displayDuration),
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: app_theme.AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
+              value: _displayDuration.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              activeColor: app_theme.AppColors.primary,
+              onChanged: (value) {
+                setState(() {
+                  _displayDuration = value.round();
+                });
+              },
+            ),
+            Text(
+              'от 1 до 10 секунд',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: app_theme.AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Отмена',
+              style: GoogleFonts.poppins(
+                color: app_theme.AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _showSnackBar('Настройки сохранены');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: app_theme.AppColors.primary,
+            ),
+            child: Text(
+              'Сохранить',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Диалог очистки сессии
   void _showClearSessionDialog() {
     if (_photoItems.isEmpty) {
@@ -809,6 +913,7 @@ class _HomePageState extends State<HomePage> {
                 _photoItems.clear();
                 _selectedImageIndices.clear();
                 _isMultiSelectMode = false;
+                _selectAllButtonUsed = false;
               });
               
               _showSnackBar('Сессия очищена');
@@ -869,17 +974,19 @@ class _HomePageState extends State<HomePage> {
                   ),
                   IconButton(
                     icon: Icon(
-                      _isMultiSelectMode 
+                      (_isMultiSelectMode && _selectAllButtonUsed && _selectedImageIndices.length == _photoItems.length)
                           ? FontAwesomeIcons.xmark 
                           : FontAwesomeIcons.squareCheck,
                       size: 20
                     ),
                     onPressed: _photoItems.isNotEmpty ? _toggleMultiSelectMode : null,
-                    tooltip: _isMultiSelectMode 
-                        ? (_selectedImageIndices.length == _photoItems.length 
-                            ? 'Отменить все' 
-                            : 'Выбрать все') 
-                        : 'Выбрать несколько',
+                    tooltip: (_isMultiSelectMode && _selectAllButtonUsed && _selectedImageIndices.length == _photoItems.length)
+                        ? 'Отменить все'
+                        : (_isMultiSelectMode 
+                            ? (_selectedImageIndices.length == _photoItems.length 
+                                ? 'Отменить все' 
+                                : 'Выбрать все') 
+                            : 'Выбрать несколько'),
                   ),
                 ],
               ),
@@ -1043,15 +1150,19 @@ class _HomePageState extends State<HomePage> {
                 // Если отменили выбор последнего элемента, выходим из режима
                 if (_selectedImageIndices.isEmpty) {
                   _isMultiSelectMode = false;
+                  _selectAllButtonUsed = false;
                 }
               } else {
                 _selectedImageIndices.add(index);
               }
+              // Сбрасываем флаг при ручном выборе/отмене
+              _selectAllButtonUsed = false;
             } else {
               // В обычном режиме включаем множественный выбор и выбираем это фото
               _isMultiSelectMode = true;
               _selectedImageIndices.clear();
               _selectedImageIndices.add(index);
+              _selectAllButtonUsed = false; // Не через кнопку
             }
           });
         },
@@ -1062,6 +1173,7 @@ class _HomePageState extends State<HomePage> {
               _isMultiSelectMode = true;
               _selectedImageIndices.clear();
               _selectedImageIndices.add(index);
+              _selectAllButtonUsed = false; // Не через кнопку
             });
           }
         },
