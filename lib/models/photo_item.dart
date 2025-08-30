@@ -32,10 +32,11 @@ class PhotoItem {
     String? imagePath,
     String? barcode,
     int? barcodeCount,
+    bool clearBarcode = false,
   }) {
     return PhotoItem(
       imagePath: imagePath ?? this.imagePath,
-      barcode: barcode ?? this.barcode,
+      barcode: clearBarcode ? null : (barcode ?? this.barcode),
       barcodeCount: barcodeCount ?? this.barcodeCount,
     );
   }

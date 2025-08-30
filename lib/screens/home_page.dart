@@ -311,9 +311,10 @@ class _HomePageState extends State<HomePage> {
         } else {
           // Полностью удаляем штрихкод
           _photoItems[index] = _photoItems[index].copyWith(
-            barcode: null,
+            clearBarcode: true,
             barcodeCount: 1,
           );
+          _showSnackBar('Штрихкод удалён');
         }
       });
       _autoSaveSession();
