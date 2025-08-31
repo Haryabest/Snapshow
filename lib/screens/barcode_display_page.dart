@@ -34,6 +34,12 @@ class _BarcodeDisplayPageState extends State<BarcodeDisplayPage> {
   void initState() {
     super.initState();
     _prepareBarcodes();
+    // Автоматически запускаем презентацию
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_barcodes.isNotEmpty) {
+        _startPresentation();
+      }
+    });
   }
   
   void _prepareBarcodes() {
@@ -276,9 +282,6 @@ class _BarcodeDisplayPageState extends State<BarcodeDisplayPage> {
               },
             ),
           ),
-          
-          // Панель управления
-          _buildControlPanel(),
         ],
       ),
     );
@@ -327,91 +330,6 @@ class _BarcodeDisplayPageState extends State<BarcodeDisplayPage> {
               ),
               textAlign: TextAlign.center,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildControlPanel() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Предыдущий
-          IconButton(
-            onPressed: _currentIndex > 0 ? () {
-              setState(() {
-                _currentIndex--;
-              });
-              _pageController.previousPage(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            } : null,
-            icon: const Icon(
-              FontAwesomeIcons.backward,
-              color: Colors.white,
-            ),
-            iconSize: 24,
-          ),
-          
-          // Воспроизведение/Пауза
-          IconButton(
-            onPressed: () {
-              if (!_isPlaying) {
-                _startPresentation();
-              } else if (_isPaused) {
-                _resumePresentation();
-              } else {
-                _pausePresentation();
-              }
-            },
-            icon: Icon(
-              !_isPlaying 
-                  ? FontAwesomeIcons.play
-                  : _isPaused 
-                      ? FontAwesomeIcons.play
-                      : FontAwesomeIcons.pause,
-              color: Colors.white,
-            ),
-            iconSize: 32,
-          ),
-          
-          // Стоп
-          IconButton(
-            onPressed: _isPlaying ? _stopPresentation : null,
-            icon: const Icon(
-              FontAwesomeIcons.stop,
-              color: Colors.white,
-            ),
-            iconSize: 24,
-          ),
-          
-          // Следующий
-          IconButton(
-            onPressed: _currentIndex < _barcodes.length - 1 ? () {
-              setState(() {
-                _currentIndex++;
-              });
-              _pageController.nextPage(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            } : null,
-            icon: const Icon(
-              FontAwesomeIcons.forward,
-              color: Colors.white,
-            ),
-            iconSize: 24,
           ),
         ],
       ),

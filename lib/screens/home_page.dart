@@ -921,6 +921,21 @@ class _HomePageState extends State<HomePage> {
                   : _buildImageGrid(),
             ),
             
+            // Общее количество товаров (штрихкодов)
+            if (_photoItems.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Общее количество товаров: ${_photoItems.where((item) => item.barcode != null).fold<int>(0, (sum, item) => sum + item.barcodeCount)}',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: app_theme.AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            
             // Панель с кнопками управления
             _buildBottomPanel(),
           ],
