@@ -8,6 +8,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart' as app_theme;
 import '../main.dart' show cameras; // Импортируем только cameras из main.dart
 import '../services/session_service.dart';
@@ -58,6 +59,21 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _requestPermissions();
     _checkForExistingSession();
+    _loadDisplayDuration();
+  }
+  
+  // Загрузка настройки времени показа
+  Future<void> _loadDisplayDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _displayDuration = prefs.getInt('display_duration') ?? 2;
+    });
+  }
+  
+  // Сохранение настройки времени показа
+  Future<void> _saveDisplayDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('display_duration', _displayDuration);
   }
   
   // Метод для запроса необходимых разрешений
@@ -485,6 +501,7 @@ class _HomePageState extends State<HomePage> {
                       setState(() {
                         _displayDuration = tempDuration;
                       });
+                      _saveDisplayDuration();
                       Navigator.of(context).pop();
                     },
                     style: ElevatedButton.styleFrom(
@@ -894,21 +911,31 @@ class _HomePageState extends State<HomePage> {
                           : app_theme.AppColors.textPrimary,
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      (_isMultiSelectMode && _selectAllButtonUsed && _selectedImageIndices.length == _photoItems.length)
-                          ? FontAwesomeIcons.xmark 
-                          : FontAwesomeIcons.squareCheck,
-                      size: 20
-                    ),
-                    onPressed: _photoItems.isNotEmpty ? _toggleMultiSelectMode : null,
-                    tooltip: (_isMultiSelectMode && _selectAllButtonUsed && _selectedImageIndices.length == _photoItems.length)
-                        ? 'Отменить все'
-                        : (_isMultiSelectMode 
-                            ? (_selectedImageIndices.length == _photoItems.length 
-                                ? 'Отменить все' 
-                                : 'Выбрать все') 
-                            : 'Выбрать несколько'),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(FontAwesomeIcons.clock, size: 18),
+                        onPressed: _showSettingsDialog,
+                        tooltip: 'Время показа: ${_getSecondsText(_displayDuration)}',
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          (_isMultiSelectMode && _selectAllButtonUsed && _selectedImageIndices.length == _photoItems.length)
+                              ? FontAwesomeIcons.xmark 
+                              : FontAwesomeIcons.squareCheck,
+                          size: 20
+                        ),
+                        onPressed: _photoItems.isNotEmpty ? _toggleMultiSelectMode : null,
+                        tooltip: (_isMultiSelectMode && _selectAllButtonUsed && _selectedImageIndices.length == _photoItems.length)
+                            ? 'Отменить все'
+                            : (_isMultiSelectMode 
+                                ? (_selectedImageIndices.length == _photoItems.length 
+                                    ? 'Отменить все' 
+                                    : 'Выбрать все') 
+                                : 'Выбрать несколько'),
+                      ),
+                    ],
                   ),
                 ],
               ),

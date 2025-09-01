@@ -37,15 +37,21 @@ class _PresentationPageState extends State<PresentationPage> {
       (timer) {
         if (_currentPage < widget.imagePaths.length - 1) {
           _currentPage++;
+          _pageController.animateToPage(
+            _currentPage,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
         } else {
-          _currentPage = 0; // Перезапускаем цикл, когда достигли последнего изображения
+          // Достигли последнего изображения - останавливаем таймер
+          _timer.cancel();
+          // Можно добавить задержку перед закрытием
+          Timer(Duration(seconds: widget.displayDuration), () {
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          });
         }
-        
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
       },
     );
   }
